@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2L Ballot Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f7f6f2; --surface:#fff; --surface2:#f0efe9; --border:#e2e0d8;
+  --text:#1a1a18; --muted:#8a8878; --accent:#2d5a3d;
+  --fall:#7a3a10; --fall-light:#fdf2ea;
+  --winter:#1a3a5c; --winter-light:#edf2f8;
+  --safe:#2d7a4f; --safe-bg:#e6f4ec;
+  --mod:#8a6200;  --mod-bg:#fdf6e3;
+  --risk:#9a2a2a; --risk-bg:#fceaea;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px}
+header{max-width:1160px;margin:0 auto 22px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+header h1{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.tag{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px}
+.layout{max-width:1160px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.card-header h2{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.card-body{padding:14px 16px}
+
+/* Filter pills */
+.filter-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+.fpill{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;transition:all .12s;user-select:none}
+.fpill:hover{border-color:var(--accent);color:var(--accent)}
+.fpill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.fpill.fall-pill.active{background:var(--fall);border-color:var(--fall)}
+.fpill.win-pill.active{background:var(--winter);border-color:var(--winter)}
+.fpill.sem-pill.active{background:#5a3e78;border-color:#5a3e78}
+.fpill.crs-pill.active{background:#2a5a7c;border-color:#2a5a7c}
+.filter-divider{width:1px;background:var(--border);margin:0 2px;align-self:stretch}
+
+/* Slots */
+.slot{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.rank{width:22px;height:22px;border-radius:5px;background:var(--surface2);border:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.slot-inner{flex:1;min-width:0}
+.slot select{width:100%;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);outline:none;cursor:pointer;transition:border-color .12s}
+.slot select:focus,.slot select.has-val{border-color:var(--accent);background:var(--surface)}
+.slot-prof{display:none;font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);margin-top:3px;padding-left:2px;font-style:italic}
+.slot-prof.on{display:block}
+.slot-badges{display:none;gap:4px;margin-top:3px;flex-wrap:wrap}
+.slot-badges.on{display:flex}
+.sb{font-size:9px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;font-weight:500}
+.sb-fall{background:var(--fall-light);color:var(--fall)}
+.sb-winter{background:var(--winter-light);color:var(--winter)}
+.sb-seminar{background:#f3eeff;color:#5a3e78}
+.sb-course{background:#e8f3fb;color:#1e5070}
+.sb-writing{background:#fff0e8;color:#8a4010}
+.sb-prax{background:#eefaf2;color:#1a5a30}
+.sb-cr{background:var(--surface2);color:var(--muted)}
+.sb-new{background:#eef2ff;color:#4f46a5}
+
+#run-btn{width:100%;margin-top:12px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s}
+#run-btn:hover{opacity:.88}
+#run-btn:disabled{opacity:.45;cursor:not-allowed}
+.prog-wrap{margin-top:9px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);width:0%;transition:width .08s linear}
+#status{margin-top:7px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:center;min-height:15px}
+
+/* Req boxes */
+.req-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.req-box{border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.req-box.ok{background:var(--safe-bg);border-color:#a8d5b8}
+.req-box.no{background:var(--risk-bg);border-color:#e0b0b0}
+.req-lbl{font-size:10px;font-family:'DM Mono',monospace;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.req-box.ok .req-lbl{color:var(--safe)}
+.req-box.no .req-lbl{color:var(--risk)}
+.req-val{font-size:12px;font-weight:500;line-height:1.35}
+.req-box.ok .req-val{color:#1a5a30}
+.req-box.no .req-val{color:#7a1a1a}
+
+/* Summary */
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.metric{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.metric-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+.metric-val{font-size:26px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.metric-val.fc{color:var(--fall)}
+.metric-val.wc{color:var(--winter)}
+.metric-sub{font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace}
+
+/* Results table */
+.rtable{width:100%;border-collapse:collapse;font-size:12px}
+.rtable th{text-align:left;font-size:10px;font-weight:500;font-family:'DM Mono',monospace;color:var(--muted);padding:6px 9px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em}
+.rtable td{padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+.rtable tr:last-child td{border-bottom:none}
+.rtable tr:hover td{background:var(--bg)}
+.sem-badge{display:inline-block;font-size:9px;font-family:'DM Mono',monospace;font-weight:500;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.sf{background:var(--fall-light);color:var(--fall)}
+.sw{background:var(--winter-light);color:var(--winter)}
+.cname{font-size:12px;font-weight:500}
+.cprof{font-size:10px;color:var(--muted);font-style:italic;margin-top:1px}
+.bar-row{display:flex;align-items:center;gap:7px}
+.bar-bg{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;min-width:50px}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.bar-pct{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;min-width:38px;text-align:right}
+.pill{display:inline-block;font-size:9px;padding:1px 7px;border-radius:4px;font-weight:500;white-space:nowrap;font-family:'DM Mono',monospace;margin-top:2px}
+.p-safe{background:var(--safe-bg);color:var(--safe)}
+.p-mod{background:var(--mod-bg);color:var(--mod)}
+.p-risk{background:var(--risk-bg);color:var(--risk)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px}
+.d-sem{background:#5a3e78}
+.d-crs{background:#2a5a7c}
+.placeholder{text-align:center;padding:50px 20px;color:var(--muted);font-size:12px;line-height:1.9}
+@media(max-width:820px){.layout{grid-template-columns:1fr}body{padding:14px}}
+
+/* ── Timetable ─────────────────────────────────────────────────────────── */
+.tt-section{max-width:1160px;margin:18px auto 0}
+.tt-legend{display:flex;gap:12px;align-items:center}
+.tt-leg-item{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.tt-leg-swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+.lg-fall{background:var(--fall-light);border:1px solid var(--fall)}
+.lg-win{background:var(--winter-light);border:1px solid var(--winter)}
+.lg-clash{background:var(--risk-bg);border:1px solid var(--risk)}
+
+#tt-conflict-banner:not(:empty){margin-bottom:14px}
+.tt-banner{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.5}
+.tt-banner.clean{background:var(--safe-bg);border:1px solid #a8d5b8;color:#1a5a30}
+.tt-banner.clash{background:var(--risk-bg);border:1px solid #e0b0b0;color:#7a1a1a}
+.tt-banner-h{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.tt-clash-row{padding:3px 0;border-top:1px solid #e8c4c4}
+.tt-clash-row:first-of-type{border-top:none}
+.tt-clash-day{font-family:'DM Mono',monospace;font-size:10px;color:#9a4a4a}
+
+.tt-grids{display:flex;flex-direction:column;gap:26px}
+.tt-col-head{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:7px;border-bottom:2px solid}
+.tt-col-head.fall{color:var(--fall);border-color:var(--fall)}
+.tt-col-head.winter{color:var(--winter);border-color:var(--winter)}
+.tt-col-head span{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px}
+
+.tt-grid{position:relative;display:grid;grid-template-columns:46px repeat(5,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tt-corner{background:var(--surface2);border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.tt-dayhdr{background:var(--surface2);border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--muted);text-align:center;padding:6px 2px}
+.tt-dayhdr:last-child{border-right:none}
+.tt-timecol{position:relative;border-right:1px solid var(--border)}
+.tt-timelbl{position:absolute;right:5px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);transform:translateY(-50%);white-space:nowrap}
+.tt-daycol{position:relative;border-right:1px solid var(--border)}
+.tt-daycol:last-child{border-right:none}
+.tt-hourline{position:absolute;left:0;right:0;border-top:1px solid var(--surface2)}
+
+.tt-block{position:absolute;left:3px;right:3px;border-radius:4px;padding:4px 6px;overflow:hidden;font-size:11px;line-height:1.2;border-left:3px solid}
+.tt-block.fall{background:var(--fall-light);border-color:var(--fall);color:var(--fall)}
+.tt-block.winter{background:var(--winter-light);border-color:var(--winter);color:var(--winter)}
+.tt-block.clash{background:var(--risk-bg);border-color:var(--risk);color:var(--risk);box-shadow:inset 0 0 0 1px rgba(154,42,42,.25)}
+.tt-block-name{font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tt-block-prof{font-size:9.5px;font-style:italic;opacity:.78;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.tt-block-time{font-family:'DM Mono',monospace;font-size:9px;opacity:.85;margin-top:2px}
+.tt-block-async{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;margin-top:1px;opacity:.95}
+
+.tt-async-list:not(:empty){margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.tt-async-item{font-size:11px;color:var(--muted);padding:2px 0;display:flex;gap:6px;align-items:baseline}
+.tt-async-tag{font-family:'DM Mono',monospace;font-size:9px;padding:1px 5px;border-radius:3px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.tt-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace}
+
+@media(max-width:820px){.tt-grids{gap:24px}.tt-section{margin-top:14px}}
+
+/* ── Exam conflicts ────────────────────────────────────────────────────── */
+.lg-warn{background:var(--mod-bg);border:1px solid var(--mod)}
+#exam-banner:not(:empty){margin-bottom:14px}
+.exam-banner{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.5}
+.exam-banner.clean{background:var(--safe-bg);border:1px solid #a8d5b8;color:#1a5a30}
+.exam-banner.warn{background:var(--mod-bg);border:1px solid #e0c68a;color:#6a4d00}
+.exam-banner.clash{background:var(--risk-bg);border:1px solid #e0b0b0;color:#7a1a1a}
+.exam-banner-h{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.exam-clash-row{padding:4px 0;border-top:1px solid rgba(0,0,0,.06)}
+.exam-clash-row:first-of-type{border-top:none}
+.exam-clash-row.warn-row{color:#6a4d00}
+.exam-clash-meta{font-family:'DM Mono',monospace;font-size:10px;opacity:.85}
+
+.exam-list{display:flex;flex-direction:column;gap:8px}
+.exam-day{display:flex;gap:12px;align-items:flex-start;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface)}
+.exam-day.has-clash{border-color:var(--risk);background:var(--risk-bg)}
+.exam-day.has-warn{border-color:var(--mod);background:var(--mod-bg)}
+.exam-day-date{flex:0 0 96px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text);padding-top:1px}
+.exam-day-date small{display:block;color:var(--muted);font-weight:400;font-size:10px;margin-top:1px}
+.exam-day-courses{flex:1;display:flex;flex-direction:column;gap:3px}
+.exam-course{font-size:12px;line-height:1.3}
+.exam-course .ec-prof{color:var(--muted);font-size:11px}
+.exam-day-tag{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;padding:2px 7px;border-radius:4px;align-self:flex-start}
+.exam-day-tag.clash{background:var(--risk);color:#fff}
+.exam-day-tag.warn{background:var(--mod);color:#fff}
+.exam-empty{padding:24px 14px;text-align:center;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace}
+</style>
+</head>
+<body>
+<header>
+  <h1>2L Ballot Optimizer</h1>
+  <span class="tag">Monte Carlo · 8 000 iterations</span>
+  <span class="tag" id="sel-tag">0 / 10 selected</span>
+</header>
+
+<div class="layout">
+  <!-- LEFT -->
+  <div class="card">
+    <div class="card-header"><h2>Priority Ballot</h2></div>
+    <div class="card-body">
+      <div class="filter-pills">
+        <span class="fpill active"     data-g="sem"  data-v="all"     onclick="pill(this)">All sems</span>
+        <span class="fpill fall-pill"  data-g="sem"  data-v="Fall"    onclick="pill(this)">Fall</span>
+        <span class="fpill win-pill"   data-g="sem"  data-v="Winter"  onclick="pill(this)">Winter</span>
+        <div class="filter-divider"></div>
+        <span class="fpill active"     data-g="type" data-v="all"     onclick="pill(this)">All types</span>
+        <span class="fpill sem-pill"   data-g="type" data-v="Seminar" onclick="pill(this)">Seminar</span>
+        <span class="fpill crs-pill"   data-g="type" data-v="Course"  onclick="pill(this)">Course</span>
+      </div>
+      <div id="slots"></div>
+      <button id="run-btn" onclick="runSim()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run simulation
+      </button>
+      <div class="prog-wrap"><div class="prog-fill" id="prog"></div></div>
+      <div id="status">Select courses and run the simulation.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="card">
+    <div class="card-header"><h2>Results</h2></div>
+    <div class="card-body">
+      <div class="req-grid">
+        <div class="req-box no" id="w-box">
+          <div class="req-lbl">Writing Requirement</div>
+          <div class="req-val" id="w-val">Not fulfilled</div>
+        </div>
+        <div class="req-box no" id="p-box">
+          <div class="req-lbl">Practicum</div>
+          <div class="req-val" id="p-val">Not fulfilled</div>
+        </div>
+      </div>
+      <div class="sum-grid">
+        <div class="metric">
+          <div class="metric-lbl">Fall full-load</div>
+          <div class="metric-val fc" id="fall-rate">—</div>
+          <div class="metric-sub">13 – 17 credits</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Winter full-load</div>
+          <div class="metric-val wc" id="win-rate">—</div>
+          <div class="metric-sub">13 – 17 credits</div>
+        </div>
+      </div>
+      <div id="results-wrap">
+        <div class="placeholder">◎<br>Results appear here after you run the simulation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TIMETABLE -->
+<div id="tt-section" class="tt-section" hidden>
+  <div class="card">
+    <div class="card-header">
+      <h2>Weekly Timetable</h2>
+      <div class="tt-legend">
+        <span class="tt-leg-item"><span class="tt-leg-swatch lg-fall"></span>Fall</span>
+        <span class="tt-leg-item"><span class="tt-leg-swatch lg-win"></span>Winter</span>
+        <span class="tt-leg-item"><span class="tt-leg-swatch lg-clash"></span>Conflict</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="tt-conflict-banner"></div>
+      <div class="tt-grids">
+        <div class="tt-col">
+          <div class="tt-col-head fall">Fall <span id="tt-fall-count"></span></div>
+          <div id="tt-fall" class="tt-grid-wrap"></div>
+          <div id="tt-fall-async" class="tt-async-list"></div>
+        </div>
+        <div class="tt-col">
+          <div class="tt-col-head winter">Winter <span id="tt-win-count"></span></div>
+          <div id="tt-win" class="tt-grid-wrap"></div>
+          <div id="tt-win-async" class="tt-async-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXAM CONFLICTS -->
+<div id="exam-section" class="tt-section" hidden>
+  <div class="card">
+    <div class="card-header">
+      <h2>Exam Conflicts</h2>
+      <div class="tt-legend">
+        <span class="tt-leg-item"><span class="tt-leg-swatch lg-clash"></span>Overlap</span>
+        <span class="tt-leg-item"><span class="tt-leg-swatch lg-warn"></span>Same day</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="exam-banner"></div>
+      <div id="exam-list" class="exam-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// [key, name, prof, sem, type, cred, demand, cap, writing, prax]
+// demand = -1  → new prof / no historical demand data (shown as "New" in UI;
+//               simulation falls back to using the course cap as a demand proxy)
+const RAW=[
+  ["Business Associations - Ellinidis||Fall","Business Associations","Ellinidis","Fall","Course",4,112,80,0,0],
+  ["Labour & Employment Law - Smith||Fall","Labour & Employment Law","Smith","Fall","Course",4,112,70,0,0],
+  ["Wills and Estates - Black||Fall","Wills and Estates","Black","Fall","Course",4,112,70,0,0],
+  ["Administrative Law - Van Harten||Fall","Administrative Law","Van Harten","Fall","Course",4,105,80,0,0],
+  ["Legal Drafting - Malysheuski||Fall","Legal Drafting","Malysheuski","Fall","Course",3,94,60,0,1],
+  ["Securities Regulation - Wiens/Cochrane||Fall","Securities Regulation","Wiens/Cochrane","Fall","Course",4,84,80,0,0],
+  ["Trusts - Parachin||Fall","Trusts","Parachin","Fall","Course",4,83,80,0,0],
+  ["Indigenous Peoples and Canadian Law - Wilkins||Fall","Indigenous Peoples and Canadian Law","Wilkins","Fall","Course",4,56,50,0,0],
+  ["Individual Employment Relationship - Bhabha||Fall","Individual Employment Relationship","Bhabha","Fall","Course",4,50,80,0,0],
+  ["Indigenous Peoples and Canadian Law - Albinati||Fall","Indigenous Peoples and Canadian Law","Albinati","Fall","Course",4,46,80,0,0],
+  ["Criminal Procedure - Greene/Lau-Po-Hung||Fall","Criminal Procedure","Greene/Lau-Po-Hung","Fall","Course",4,44,80,0,0],
+  ["Family Law I - Drummond||Fall","Family Law I","Drummond","Fall","Course",4,43,65,0,0],
+  ["Criminal Law II: Cybercrime - Fawcett||Fall","Criminal Law II: Cybercrime","Fawcett","Fall","Course",3,41,35,0,0],
+  ["Immigration Law - McElroy/Mithoowani||Fall","Immigration Law","McElroy/Mithoowani","Fall","Course",4,40,65,0,0],
+  ["Indigenous Peoples and Canadian Law - Drake||Fall","Indigenous Peoples and Canadian Law","Drake","Fall","Course",4,40,80,0,0],
+  ["Patents - Mgbeoji||Fall","Patents","Mgbeoji","Fall","Course",4,39,80,0,0],
+  ["Commercial Law - Geva||Fall","Commercial Law","Geva","Fall","Course",4,35,80,0,0],
+  ["Conflict of Laws - Walker||Fall","Conflict of Laws","Walker","Fall","Course",4,33,80,0,0],
+  ["Collective Bargaining Law - De Stefano||Fall","Collective Bargaining Law","De Stefano","Fall","Course",4,30,80,0,0],
+  ["Insurance Law - Campisi||Fall","Insurance Law","Campisi","Fall","Course",4,29,35,0,1],
+  ["Public International Law - Saberi||Fall","Public International Law","Saberi","Fall","Course",4,28,80,0,0],
+  ["Legal Process - Moore||Fall","Legal Process","Moore","Fall","Course",4,26,50,0,0],
+  ["Refugee Law - Rehaag||Fall","Refugee Law","Rehaag","Fall","Course",4,26,80,0,0],
+  ["Environmental Law - Butler/Gardner||Fall","Environmental Law","Butler/Gardner","Fall","Course",4,24,80,0,0],
+  ["Wills and Estates - Michaud||Fall","Wills and Estates","Michaud","Fall","Course",4,24,55,0,0],
+  ["Disability & the Law - Mykitiuk||Fall","Disability & the Law","Mykitiuk","Fall","Course",3,23,40,1,0],
+  ["International Business Transactions - Geva||Fall","International Business Transactions","Geva","Fall","Course",3,23,30,1,0],
+  ["Evidence - Datt||Fall","Evidence","Datt","Fall","Course",4,22,80,0,0],
+  ["Evidence - Walker/De Filippis||Fall","Evidence","Walker/De Filippis","Fall","Course",4,22,80,0,0],
+  ["Taxation Law - Kutyan/Trieu||Fall","Taxation Law","Kutyan/Trieu","Fall","Course",4,22,65,0,0],
+  ["Statutory Interpretation - Kettles/Montgomery/Hoaken||Fall","Statutory Interpretation","Kettles/Montgomery/Hoaken","Fall","Course",3,20,80,0,0],
+  ["Legal Engineering: Tech & Innovation in Legal Service Delivery - Hounsell||Fall","Legal Engineering: Tech & Innovation in Legal Service Delivery","Hounsell","Fall","Course",3,19,30,0,1],
+  ["Legal Ethics - Bethell||Fall","Legal Ethics","Bethell","Fall","Course",3,17,25,0,0],
+  ["Legal Ethics - Paciocco||Fall","Legal Ethics","Paciocco","Fall","Course",3,17,25,0,0],
+  ["International Commercial Arbitration - Walker||Fall","International Commercial Arbitration","Walker","Fall","Course",4,13,80,0,1],
+  ["Municipal Law - Mascarin/Gajaria||Fall","Municipal Law","Mascarin/Gajaria","Fall","Course",3,13,40,0,0],
+  ["Administrative Law - Goldberg||Fall","Administrative Law","Goldberg","Fall","Course",4,-1,80,0,0],
+  ["Business Associations - O'Donovan||Fall","Business Associations","O'Donovan","Fall","Course",4,-1,80,0,0],
+  ["Emerging Technologies: Law, Policy and Governance - Rebenchuk/Hunter/Marshall||Fall","Emerging Technologies: Law, Policy and Governance","Rebenchuk/Hunter/Marshall","Fall","Course",4,-1,80,0,0],
+  ["International Criminal Law - Matthews||Fall","International Criminal Law","Matthews","Fall","Course",4,-1,35,0,1],
+  ["Real Estate Transactions - Jung||Fall","Real Estate Transactions","Jung","Fall","Course",3,-1,80,0,0],
+  ["Lawyer as Negotiator - Odumeru||Fall","Lawyer as Negotiator","Odumeru","Fall","Seminar",4,117,80,0,1],
+  ["Trial Advocacy - Rosenthal||Fall","Trial Advocacy","Rosenthal","Fall","Seminar",4,101,90,0,1],
+  ["Financial Literacy for Lawyers - Friedlan||Fall","Financial Literacy for Lawyers","Friedlan","Fall","Seminar",1,73,20,0,0],
+  ["Legal Practice Dynamics - Glatter||Fall","Legal Practice Dynamics","Glatter","Fall","Seminar",1,37,20,0,0],
+  ["Children And The Law - Kierstead/McGirr||Fall","Children And The Law","Kierstead/McGirr","Fall","Seminar",3,36,20,1,1],
+  ["Theory and Practice of Mediation - Moldaver||Fall","Theory and Practice of Mediation","Moldaver","Fall","Seminar",4,35,20,0,1],
+  ["Trauma-Informed Legal Practices and Resilience Strategies - Kierstead/Maki||Fall","Trauma-Informed Legal Practices and Resilience Strategies","Kierstead/Maki","Fall","Seminar",2,35,20,0,0],
+  ["Law of War - Mgbeoji||Fall","Law of War","Mgbeoji","Fall","Seminar",3,22,20,1,0],
+  ["Health Law - Rosen/Palter||Fall","Health Law","Rosen/Palter","Fall","Seminar",3,21,20,0,0],
+  ["Regulatory Offences - Libman||Fall","Regulatory Offences","Libman","Fall","Seminar",3,21,20,1,1],
+  ["Legal Values: Psycho-dynamics of Advocacy & Judging - Lauwers||Fall","Legal Values: Psycho-dynamics of Advocacy & Judging","Lauwers","Fall","Seminar",3,20,20,1,0],
+  ["Administration of Civil Justice: Estate Litigation - Black||Fall","Administration of Civil Justice: Estate Litigation","Black","Fall","Seminar",3,18,15,1,0],
+  ["International Human Rights Law - Yap/Greenberg||Fall","International Human Rights Law","Yap/Greenberg","Fall","Seminar",4,15,25,1,0],
+  ["Administration of Criminal Justice: Wrongful Conviction - Biddulph/Lutes||Fall","Administration of Criminal Justice: Wrongful Conviction","Biddulph/Lutes","Fall","Seminar",3,14,20,1,0],
+  ["Administration of Criminal Justice: Mental Illness - Bonnet||Fall","Administration of Criminal Justice: Mental Illness","Bonnet","Fall","Seminar",3,13,20,1,0],
+  ["Legal Values: Advanced Criminal Law (Race & Racism) - Mirza/Cudjoe||Fall","Legal Values: Advanced Criminal Law (Race & Racism)","Mirza/Cudjoe","Fall","Seminar",3,11,20,1,0],
+  ["Consumption Tax Law - Thang||Fall","Consumption Tax Law","Thang","Fall","Seminar",3,10,20,0,0],
+  ["Constitutional Litigation - Thavaraj/Chung/Patel/Boutilier||Fall","Constitutional Litigation","Thavaraj/Chung/Patel/Boutilier","Fall","Seminar",3,9,20,0,1],
+  ["Litigation Dispute Resolution and the Administration of Justice Colloquium - Walker||Fall","Litigation Dispute Resolution and the Administration of Justice Colloquium","Walker","Fall","Seminar",3,7,20,1,0],
+  ["Globalization & the Law - Matthews||Fall","Globalization & the Law","Matthews","Fall","Seminar",3,-1,20,0,1],
+  ["Legal Values: Human-AI Systems, Judgment, and Legal Practice - Hylton||Fall","Legal Values: Human-AI Systems, Judgment, and Legal Practice","Hylton","Fall","Seminar",3,-1,20,1,0],
+  ["Legal Values: Litigating IP Cases - Tanner||Fall","Legal Values: Litigating IP Cases","Tanner","Fall","Seminar",3,-1,20,0,1],
+  ["Occupational Health & Safety - Daniel||Fall","Occupational Health & Safety","Daniel","Fall","Seminar",3,-1,20,1,0],
+  ["Business Associations - Ellinidis/Akkawi||Winter","Business Associations","Ellinidis/Akkawi","Winter","Course",4,112,80,0,0],
+  ["Legal Drafting - Silversides||Winter","Legal Drafting","Silversides","Winter","Course",3,78,50,0,0],
+  ["Administrative Law - Safayeni/King/Shores/Block||Winter","Administrative Law","Safayeni/King/Shores/Block","Winter","Course",4,75,80,0,0],
+  ["Bankruptcy & Insolvency Law - Kauffman||Winter","Bankruptcy & Insolvency Law","Kauffman","Winter","Course",4,75,80,0,0],
+  ["Real Estate Transactions - Carter||Winter","Real Estate Transactions","Carter","Winter","Course",3,70,80,0,0],
+  ["Indigenous Peoples and Canadian Law - Wilkins||Winter","Indigenous Peoples and Canadian Law","Wilkins","Winter","Course",4,56,50,0,0],
+  ["Taxation Law - Parachin||Winter","Taxation Law","Parachin","Winter","Course",4,54,80,0,0],
+  ["Family Law I - Kierstead/Carpenter||Winter","Family Law I","Kierstead/Carpenter","Winter","Course",4,51,65,0,0],
+  ["Copyright - Bandopadhyay||Winter","Copyright","Bandopadhyay","Winter","Course",4,48,80,0,0],
+  ["Criminal Procedure - Tanguay-Renaud||Winter","Criminal Procedure","Tanguay-Renaud","Winter","Course",4,47,80,0,0],
+  ["Trademarks - Mgbeoji||Winter","Trademarks","Mgbeoji","Winter","Course",4,47,70,0,0],
+  ["Indigenous Peoples and Canadian Law - Albinati||Winter","Indigenous Peoples and Canadian Law","Albinati","Winter","Course",4,46,80,0,0],
+  ["Advanced Torts - Sutherland||Winter","Advanced Torts","Sutherland","Winter","Course",3,45,70,0,0],
+  ["Evidence - McKechney/Hamilton/Markin||Winter","Evidence","McKechney/Hamilton/Markin","Winter","Course",4,44,80,0,0],
+  ["Restitution - McCamus||Winter","Restitution","McCamus","Winter","Course",4,44,60,0,0],
+  ["Securities Regulation - Condon||Winter","Securities Regulation","Condon","Winter","Course",4,44,80,0,0],
+  ["Family Law I - Drummond||Winter","Family Law I","Drummond","Winter","Course",4,43,65,0,0],
+  ["Business Associations - Petrin||Winter","Business Associations","Petrin","Winter","Course",4,42,80,0,0],
+  ["Criminal Law II: Homicide - Watt/Makepeace||Winter","Criminal Law II: Homicide","Watt/Makepeace","Winter","Course",3,36,25,0,0],
+  ["Civil Procedure II - Watson||Winter","Civil Procedure II","Watson","Winter","Course",3,34,80,0,0],
+  ["Criminal Law II: Sexual Offences - Chapman/Witkin||Winter","Criminal Law II: Sexual Offences","Chapman/Witkin","Winter","Course",3,34,20,1,1],
+  ["International Law & Development: Trade, Investment & Human Rights - Buchanan||Winter","International Law & Development: Trade, Investment & Human Rights","Buchanan","Winter","Course",4,29,43,1,0],
+  ["Law and Social Change: Israel/Palestine and International Law - Bhabha/Matthews||Winter","Law and Social Change: Israel/Palestine and International Law","Bhabha/Matthews","Winter","Course",3,28,70,0,0],
+  ["Administrative Law - Martin/Killey||Winter","Administrative Law","Martin/Killey","Winter","Course",4,27,80,0,0],
+  ["Legal Governance of Health Care - Sangiuliano||Winter","Legal Governance of Health Care","Sangiuliano","Winter","Course",3,23,80,0,0],
+  ["Legal Ethics - MacKenzie/Mercer||Winter","Legal Ethics","MacKenzie/Mercer","Winter","Course",3,21,25,1,0],
+  ["Legal Information Technology: Data Analysis & Coding for Access to Justice - Rehaag||Winter","Legal Information Technology: Data Analysis & Coding for Access to Justice","Rehaag","Winter","Course",3,19,45,0,1],
+  ["International Taxation - Grinhaus||Winter","International Taxation","Grinhaus","Winter","Course",4,13,40,0,0],
+  ["Trusts - Hull/Popovic-Montag/Kappy/Clark/Esterbauer/So/Osmar||Winter","Trusts","Hull/Popovic-Montag/Kappy/Clark/Esterbauer/So/Osmar","Winter","Course",4,11,80,0,0],
+  ["Law & Social Change: The Law Commission of Ontario Workshop - Approaches to Law Reform - Thomas/Fritsch||Winter","Law & Social Change: The Law Commission of Ontario Workshop - Approaches to Law Reform","Thomas/Fritsch","Winter","Course",3,7,15,0,1],
+  ["Canadian Federalism - Horner||Winter","Canadian Federalism","Horner","Winter","Course",3,-1,45,1,0],
+  ["Civil Liberties - Zwibel||Winter","Civil Liberties","Zwibel","Winter","Course",3,-1,45,0,0],
+  ["Evidence - Jones||Winter","Evidence","Jones","Winter","Course",4,-1,80,0,0],
+  ["Jurisprudence - Gaxiola Lappe||Winter","Jurisprudence","Gaxiola Lappe","Winter","Course",3,-1,25,1,0],
+  ["Taxation of Business Enterprises - Doobay/Deverett||Winter","Taxation of Business Enterprises","Doobay/Deverett","Winter","Course",4,-1,60,0,0],
+  ["Financial Literacy for Lawyers - Friedlan||Winter","Financial Literacy for Lawyers","Friedlan","Winter","Seminar",1,73,20,0,0],
+  ["Entertainment & Sports Law - Selznick||Winter","Entertainment & Sports Law","Selznick","Winter","Seminar",3,64,25,1,0],
+  ["Administration of Criminal Justice: Sentencing - Embry,Frost||Winter","Administration of Criminal Justice: Sentencing","Embry,Frost","Winter","Seminar",3,56,20,1,0],
+  ["A.I. and Technology in Legal Practice - Hounsell/Delaney||Winter","A.I. and Technology in Legal Practice","Hounsell/Delaney","Winter","Seminar",2,55,25,0,0],
+  ["Dispute Settlement: Alternatives to Resolving Disputes - Moore||Winter","Dispute Settlement: Alternatives to Resolving Disputes","Moore","Winter","Seminar",3,37,20,1,0],
+  ["Legal Practice Dynamics - Glatter||Winter","Legal Practice Dynamics","Glatter","Winter","Seminar",1,37,20,0,0],
+  ["Corporate Governance - Puri||Winter","Corporate Governance","Puri","Winter","Seminar",3,36,20,1,0],
+  ["Legal Values: Artificial Intelligence (Discrmination & Surveillance) - Grossman||Winter","Legal Values: Artificial Intelligence (Discrmination & Surveillance)","Grossman","Winter","Seminar",3,35,20,0,1],
+  ["Class Actions - Chiodo||Winter","Class Actions","Chiodo","Winter","Seminar",3,34,20,1,0],
+  ["Mental Health, Wellness and the Legal Profession - Bergman||Winter","Mental Health, Wellness and the Legal Profession","Bergman","Winter","Seminar",2,32,20,0,0],
+  ["U.S. Securities Regulation in Comparative Perspective - Ritchie||Winter","U.S. Securities Regulation in Comparative Perspective","Ritchie","Winter","Seminar",3,29,20,1,0],
+  ["Advanced Commercial Litigation Workshop - McKenna/McLachlan/Swan/Davies||Winter","Advanced Commercial Litigation Workshop","McKenna/McLachlan/Swan/Davies","Winter","Seminar",4,28,20,0,1],
+  ["Law, Society & State: Derivatives Law & Crypto Contracts - Fine||Winter","Law, Society & State: Derivatives Law & Crypto Contracts","Fine","Winter","Seminar",3,23,20,1,0],
+  ["Labour Arbitration - Slinn||Winter","Labour Arbitration","Slinn","Winter","Seminar",3,22,20,0,1],
+  ["Constitutional Litigation - Ranganathan||Winter","Constitutional Litigation","Ranganathan","Winter","Seminar",3,20,20,0,1],
+  ["Legal Values: Commercializing IP - De Fazekas/Grant||Winter","Legal Values: Commercializing IP","De Fazekas/Grant","Winter","Seminar",3,19,10,1,0],
+  ["Evidence and Proof: Theory and Practice - Yu||Winter","Evidence and Proof: Theory and Practice","Yu","Winter","Seminar",4,18,20,0,1],
+  ["Tax Lawyering - Kutyan/Trieu||Winter","Tax Lawyering","Kutyan/Trieu","Winter","Seminar",3,18,20,0,1],
+  ["Intensive Legal Research & Writing - DIna/Wang||Winter","Intensive Legal Research & Writing","DIna/Wang","Winter","Seminar",3,16,20,1,0],
+  ["Comparative Labor Law & Policy Journal - De Stefano/Slinn||Winter","Comparative Labor Law & Policy Journal","De Stefano/Slinn","Winter","Seminar",4,15,15,0,0],
+  ["Labour and Employment Law and Policy Colloquium - Smith||Winter","Labour and Employment Law and Policy Colloquium","Smith","Winter","Seminar",3,15,20,1,0],
+  ["Climate Change Law - Van Harten||Winter","Climate Change Law","Van Harten","Winter","Seminar",3,14,20,1,0],
+  ["Legal Values: (Neuro)technology and Human Rights - Saberi||Winter","Legal Values: (Neuro)technology and Human Rights","Saberi","Winter","Seminar",3,13,20,1,0],
+  ["Advanced Bankruptcy - Ben-Ishai||Winter","Advanced Bankruptcy","Ben-Ishai","Winter","Seminar",3,12,20,1,0],
+  ["Directed Reading: Legal History Workshop - McMahon||Winter","Directed Reading: Legal History Workshop","McMahon","Winter","Seminar",3,12,20,1,0],
+  ["Joint JD/MBA Seminar - Petrin||Winter","Joint JD/MBA Seminar","Petrin","Winter","Seminar",3,12,20,1,0],
+  ["Legal Values: The New Right, Populism, and Global Legal Order - Saberi||Winter","Legal Values: The New Right, Populism, and Global Legal Order","Saberi","Winter","Seminar",3,12,5,1,0],
+  ["Advanced Children & the Law Workshop - Kierstead/Bianchi/McGirr||Winter","Advanced Children & the Law Workshop","Kierstead/Bianchi/McGirr","Winter","Seminar",4,11,15,0,1],
+  ["Directed Reading: IP Innovation Clinic - Turcotte||Winter","Directed Reading: IP Innovation Clinic","Turcotte","Winter","Seminar",4,11,20,1,1],
+  ["Managing Family Law Cases - Kierstead/Carpenter||Winter","Managing Family Law Cases","Kierstead/Carpenter","Winter","Seminar",3,9,20,0,1],
+  ["Sexuality and the Law - Matthews||Winter","Sexuality and the Law","Matthews","Winter","Seminar",3,5,20,1,0],
+  ["Taxation of Corporate Transactions - McIsaac/Colborne||Winter","Taxation of Corporate Transactions","McIsaac/Colborne","Winter","Seminar",3,4,20,0,0],
+  ["Globalization & the Law - Buchanan||Winter","Globalization & the Law","Buchanan","Winter","Seminar",3,-1,5,0,0],
+  ["Law, Society, State: Critical Race Theory - Smith||Winter","Law, Society, State: Critical Race Theory","Smith","Winter","Seminar",3,-1,5,0,0],
+  ["Legal Values: Law, Psyche, and Psychoanalysis - Berger||Winter","Legal Values: Law, Psyche, and Psychoanalysis","Berger","Winter","Seminar",2,-1,20,1,0],
+  ["Legal Values: Public Inquiries - Lacombe/Au||Winter","Legal Values: Public Inquiries","Lacombe/Au","Winter","Seminar",3,-1,20,1,0],
+  ["Tax As Instrument Of Soc & Econ Policy - Egit||Winter","Tax As Instrument Of Soc & Econ Policy","Egit","Winter","Seminar",3,-1,7,1,0],
+  ["Theory and Practice of Mediation - Breitman||Winter","Theory and Practice of Mediation","Breitman","Winter","Seminar",4,-1,20,0,1]
+];
+
+const DB=RAW.map(r=>({key:r[0],name:r[1],prof:r[2],sem:r[3],type:r[4],cred:r[5],demand:r[6],cap:r[7],writing:r[8]===1,prax:r[9]===1,isNew:r[6]<0}));
+const MAP={};
+DB.forEach(c=>MAP[c.key]=c);
+
+// ── Timetable schedule data (resolved offline from Course_Timetable_Data.xlsx) ──
+// key -> array of meetings: [dayIndex(0=Mon..4=Fri), startMin, endMin, asyncFlag]
+// Empty array = no fixed meeting time (e.g. directed readings).
+// Times resolved offline from the spreadsheet. AM/PM rule: the earliest class
+// starts at 8:30, so any clock hour 1-7 is PM; 8:30/9:00/9:30 are AM; an end
+// time that lands before its start is PM (+12h). All 137 courses verified sane.
+const SCHED={
+"Business Associations - Ellinidis||Fall":[[3,1110,1280,""],[4,690,750,""]],
+"Labour & Employment Law - Smith||Fall":[[0,510,630,""],[2,510,630,""]],
+"Wills and Estates - Black||Fall":[[1,540,620,"1h"],[3,540,620,"1hr"]],
+"Administrative Law - Van Harten||Fall":[[1,870,990,""],[3,870,990,""]],
+"Legal Drafting - Malysheuski||Fall":[[0,1050,1220,""]],
+"Securities Regulation - Wiens/Cochrane||Fall":[[1,510,630,""],[3,510,630,""]],
+"Trusts - Parachin||Fall":[[1,990,1110,""],[3,990,1110,""]],
+"Indigenous Peoples and Canadian Law - Wilkins||Fall":[[1,750,870,""],[3,750,870,""]],
+"Individual Employment Relationship - Bhabha||Fall":[[0,990,1110,""],[2,990,1110,""]],
+"Indigenous Peoples and Canadian Law - Albinati||Fall":[[4,510,690,"1hr"]],
+"Criminal Procedure - Greene/Lau-Po-Hung||Fall":[[0,1110,1220,""],[2,1110,1220,""]],
+"Family Law I - Drummond||Fall":[[1,750,870,""],[3,750,870,""]],
+"Criminal Law II: Cybercrime - Fawcett||Fall":[[0,900,980,""],[2,900,980,""]],
+"Immigration Law - McElroy/Mithoowani||Fall":[[1,630,750,""],[3,630,750,""]],
+"Indigenous Peoples and Canadian Law - Drake||Fall":[[1,630,750,""],[3,630,750,""]],
+"Patents - Mgbeoji||Fall":[[0,990,1110,""],[2,990,1110,""]],
+"Commercial Law - Geva||Fall":[[0,810,990,""],[2,810,990,""]],
+"Conflict of Laws - Walker||Fall":[[0,810,990,""],[2,810,990,""]],
+"Collective Bargaining Law - De Stefano||Fall":[[1,750,870,""],[3,750,870,""]],
+"Insurance Law - Campisi||Fall":[[0,510,630,""],[2,510,630,""]],
+"Public International Law - Saberi||Fall":[[1,870,990,""],[3,870,990,""]],
+"Legal Process - Moore||Fall":[[0,630,750,""],[2,630,750,""]],
+"Refugee Law - Rehaag||Fall":[[0,810,990,""],[2,810,990,""]],
+"Environmental Law - Butler/Gardner||Fall":[[0,990,1040,""],[2,960,1140,""]],
+"Wills and Estates - Michaud||Fall":[[1,630,800,"1h"]],
+"Disability & the Law - Mykitiuk||Fall":[[0,810,990,"1h"]],
+"International Business Transactions - Geva||Fall":[[1,870,1050,""]],
+"Evidence - Datt||Fall":[[0,990,1110,""],[3,990,1110,""]],
+"Evidence - Walker/De Filippis||Fall":[[0,1110,1220,""],[3,1110,1220,""]],
+"Taxation Law - Kutyan/Trieu||Fall":[[0,510,630,""],[2,510,630,""]],
+"Statutory Interpretation - Kettles/Montgomery/Hoaken||Fall":[[2,1110,1280,""]],
+"Legal Engineering: Tech & Innovation in Legal Service Delivery - Hounsell||Fall":[[3,990,1160,""]],
+"Legal Ethics - Bethell||Fall":[[1,540,620,""],[3,540,620,""]],
+"Legal Ethics - Paciocco||Fall":[[1,990,1110,""],[3,990,1110,""]],
+"International Commercial Arbitration - Walker||Fall":[[0,630,750,""],[2,630,750,""]],
+"Municipal Law - Mascarin/Gajaria||Fall":[[2,810,1050,""]],
+"Administrative Law - Goldberg||Fall":[[1,510,630,""],[3,1140,1260,""]],
+"Business Associations - O'Donovan||Fall":[[0,1140,1260,""],[2,1140,1260,""]],
+"Emerging Technologies: Law, Policy and Governance - Rebenchuk/Hunter/Marshall||Fall":[[2,510,630,""],[3,510,630,""]],
+"International Criminal Law - Matthews||Fall":[[3,750,870,""],[4,690,930,""]],
+"Real Estate Transactions - Jung||Fall":[[3,870,1110,""]],
+"Lawyer as Negotiator - Odumeru||Fall":[[2,1140,1320,""]],
+"Trial Advocacy - Rosenthal||Fall":[[1,1140,1320,""]],
+"Financial Literacy for Lawyers - Friedlan||Fall":[[4,840,920,""]],
+"Legal Practice Dynamics - Glatter||Fall":[[1,690,750,""]],
+"Children And The Law - Kierstead/McGirr||Fall":[[1,990,1110,""]],
+"Theory and Practice of Mediation - Moldaver||Fall":[[1,810,990,""]],
+"Trauma-Informed Legal Practices and Resilience Strategies - Kierstead/Maki||Fall":[[1,870,990,""]],
+"Law of War - Mgbeoji||Fall":[[3,870,990,""]],
+"Health Law - Rosen/Palter||Fall":[[1,1140,1260,""]],
+"Regulatory Offences - Libman||Fall":[[0,810,990,""]],
+"Legal Values: Psycho-dynamics of Advocacy & Judging - Lauwers||Fall":[[3,1110,1220,""]],
+"Administration of Civil Justice: Estate Litigation - Black||Fall":[[1,630,750,""]],
+"International Human Rights Law - Yap/Greenberg||Fall":[[2,810,1050,""]],
+"Administration of Criminal Justice: Wrongful Conviction - Biddulph/Lutes||Fall":[[3,1080,1200,""]],
+"Administration of Criminal Justice: Mental Illness - Bonnet||Fall":[[1,1110,1220,""]],
+"Legal Values: Advanced Criminal Law (Race & Racism) - Mirza/Cudjoe||Fall":[[1,1110,1220,""]],
+"Consumption Tax Law - Thang||Fall":[[0,600,720,""]],
+"Constitutional Litigation - Thavaraj/Chung/Patel/Boutilier||Fall":[[0,1110,1220,""]],
+"Litigation Dispute Resolution and the Administration of Justice Colloquium - Walker||Fall":[[1,870,990,""]],
+"Globalization & the Law - Matthews||Fall":[[4,570,690,""]],
+"Legal Values: Human-AI Systems, Judgment, and Legal Practice - Hylton||Fall":[[1,630,750,""]],
+"Legal Values: Litigating IP Cases - Tanner||Fall":[[3,630,750,""]],
+"Occupational Health & Safety - Daniel||Fall":[[2,1050,1160,""]],
+"Business Associations - Ellinidis/Akkawi||Winter":[[2,1110,1280,""],[4,630,690,""]],
+"Legal Drafting - Silversides||Winter":[[0,1050,1220,""]],
+"Administrative Law - Safayeni/King/Shores/Block||Winter":[[1,990,1110,""]],
+"Bankruptcy & Insolvency Law - Kauffman||Winter":[[0,870,990,""],[2,870,990,""]],
+"Real Estate Transactions - Carter||Winter":[[4,570,750,""]],
+"Indigenous Peoples and Canadian Law - Wilkins||Winter":[[1,750,870,""]],
+"Taxation Law - Parachin||Winter":[[0,990,1110,""],[2,990,1110,""]],
+"Family Law I - Kierstead/Carpenter||Winter":[[1,870,990,""]],
+"Copyright - Bandopadhyay||Winter":[[0,510,630,""],[2,510,630,""]],
+"Criminal Procedure - Tanguay-Renaud||Winter":[[1,750,870,""]],
+"Trademarks - Mgbeoji||Winter":[[0,870,990,""],[2,870,990,""]],
+"Indigenous Peoples and Canadian Law - Albinati||Winter":[[2,870,1050,"1h"]],
+"Advanced Torts - Sutherland||Winter":[[3,990,1100,"1h"]],
+"Evidence - McKechney/Hamilton/Markin||Winter":[[1,1050,1160,""]],
+"Restitution - McCamus||Winter":[[1,630,750,""],[3,630,750,""]],
+"Securities Regulation - Condon||Winter":[[1,510,630,""],[3,510,630,""]],
+"Family Law I - Drummond||Winter":[[0,510,630,""],[2,510,630,""]],
+"Business Associations - Petrin||Winter":[[0,630,750,""],[2,630,750,""]],
+"Criminal Law II: Homicide - Watt/Makepeace||Winter":[[2,930,1110,""]],
+"Civil Procedure II - Watson||Winter":[[0,1080,1260,""]],
+"Criminal Law II: Sexual Offences - Chapman/Witkin||Winter":[[2,1110,1280,""]],
+"International Law & Development: Trade, Investment & Human Rights - Buchanan||Winter":[[0,630,750,""],[2,630,750,""]],
+"Law and Social Change: Israel/Palestine and International Law - Bhabha/Matthews||Winter":[[3,870,1050,""]],
+"Administrative Law - Martin/Killey||Winter":[[0,510,630,""],[2,510,630,""]],
+"Legal Governance of Health Care - Sangiuliano||Winter":[[4,630,810,""]],
+"Legal Ethics - MacKenzie/Mercer||Winter":[[0,870,1050,""]],
+"Legal Information Technology: Data Analysis & Coding for Access to Justice - Rehaag||Winter":[[0,990,1160,""]],
+"International Taxation - Grinhaus||Winter":[[1,870,990,""]],
+"Trusts - Hull/Popovic-Montag/Kappy/Clark/Esterbauer/So/Osmar||Winter":[[1,1110,1220,""]],
+"Law & Social Change: The Law Commission of Ontario Workshop - Approaches to Law Reform - Thomas/Fritsch||Winter":[[1,1080,1260,""]],
+"Canadian Federalism - Horner||Winter":[[2,1050,1220,""]],
+"Civil Liberties - Zwibel||Winter":[[3,1050,1220,""]],
+"Evidence - Jones||Winter":[[1,630,750,""],[3,630,750,""]],
+"Jurisprudence - Gaxiola Lappe||Winter":[[3,1050,1220,""]],
+"Taxation of Business Enterprises - Doobay/Deverett||Winter":[[1,750,870,""]],
+"Financial Literacy for Lawyers - Friedlan||Winter":[[4,720,920,""]],
+"Entertainment & Sports Law - Selznick||Winter":[[4,510,630,""]],
+"Administration of Criminal Justice: Sentencing - Embry,Frost||Winter":[[2,1110,1220,""]],
+"A.I. and Technology in Legal Practice - Hounsell/Delaney||Winter":[[3,1050,1160,""]],
+"Dispute Settlement: Alternatives to Resolving Disputes - Moore||Winter":[[0,630,750,""]],
+"Legal Practice Dynamics - Glatter||Winter":[[1,810,870,""]],
+"Corporate Governance - Puri||Winter":[[1,870,990,""]],
+"Legal Values: Artificial Intelligence (Discrmination & Surveillance) - Grossman||Winter":[[2,510,630,""]],
+"Class Actions - Chiodo||Winter":[[0,870,990,""]],
+"Mental Health, Wellness and the Legal Profession - Bergman||Winter":[[0,510,690,""]],
+"U.S. Securities Regulation in Comparative Perspective - Ritchie||Winter":[[2,630,750,""]],
+"Advanced Commercial Litigation Workshop - McKenna/McLachlan/Swan/Davies||Winter":[[1,1050,1220,""]],
+"Law, Society & State: Derivatives Law & Crypto Contracts - Fine||Winter":[[3,990,1110,""]],
+"Labour Arbitration - Slinn||Winter":[[1,1110,1220,""]],
+"Constitutional Litigation - Ranganathan||Winter":[[0,1110,1220,""]],
+"Legal Values: Commercializing IP - De Fazekas/Grant||Winter":[[0,1050,1160,""]],
+"Evidence and Proof: Theory and Practice - Yu||Winter":[[2,1050,1220,""]],
+"Tax Lawyering - Kutyan/Trieu||Winter":[[3,510,630,""]],
+"Intensive Legal Research & Writing - DIna/Wang||Winter":[[3,630,750,""]],
+"Comparative Labor Law & Policy Journal - De Stefano/Slinn||Winter":[[1,750,870,""]],
+"Labour and Employment Law and Policy Colloquium - Smith||Winter":[[1,630,750,""]],
+"Climate Change Law - Van Harten||Winter":[[4,630,750,""]],
+"Legal Values: (Neuro)technology and Human Rights - Saberi||Winter":[[1,510,630,""]],
+"Advanced Bankruptcy - Ben-Ishai||Winter":[[2,630,750,""]],
+"Directed Reading: Legal History Workshop - McMahon||Winter":[[2,1080,1215,""]],
+"Joint JD/MBA Seminar - Petrin||Winter":[[1,870,990,""]],
+"Legal Values: The New Right, Populism, and Global Legal Order - Saberi||Winter":[[3,870,990,""]],
+"Advanced Children & the Law Workshop - Kierstead/Bianchi/McGirr||Winter":[[0,870,1050,""]],
+"Directed Reading: IP Innovation Clinic - Turcotte||Winter":[],
+"Managing Family Law Cases - Kierstead/Carpenter||Winter":[[1,870,990,""],[3,630,750,""]],
+"Sexuality and the Law - Matthews||Winter":[[4,510,630,""]],
+"Taxation of Corporate Transactions - McIsaac/Colborne||Winter":[[2,630,750,""]],
+"Globalization & the Law - Buchanan||Winter":[[3,990,1110,""]],
+"Law, Society, State: Critical Race Theory - Smith||Winter":[[1,870,990,""]],
+"Legal Values: Law, Psyche, and Psychoanalysis - Berger||Winter":[[0,630,750,""]],
+"Legal Values: Public Inquiries - Lacombe/Au||Winter":[[3,1110,1220,""]],
+"Tax As Instrument Of Soc & Econ Policy - Egit||Winter":[[3,1110,1220,""]],
+"Theory and Practice of Mediation - Breitman||Winter":[[1,870,1050,""]]
+};
+
+// ── Exam schedule (resolved offline from Exam_Schedule.xlsx) ──
+// key -> [examDateISO, startMinutes, dateLabel]. Each exam assumed 3h long.
+// Courses absent here are take-home/paper and never conflict.
+const EXAMS={
+"Insurance Law - Campisi||Fall":["2026-11-30",810,"Mon Nov 30"],
+"Administrative Law - Goldberg||Fall":["2026-12-01",540,"Tue Dec 1"],
+"Indigenous Peoples and Canadian Law - Drake||Fall":["2026-12-02",540,"Wed Dec 2"],
+"Business Associations - Ellinidis||Fall":["2026-12-03",810,"Thu Dec 3"],
+"Administrative Law - Van Harten||Fall":["2026-12-04",540,"Fri Dec 4"],
+"Taxation Law - Kutyan/Trieu||Fall":["2026-11-30",810,"Mon Nov 30"],
+"Collective Bargaining Law - De Stefano||Fall":["2026-12-01",540,"Tue Dec 1"],
+"Labour & Employment Law - Smith||Fall":["2026-12-02",540,"Wed Dec 2"],
+"Environmental Law - Butler/Gardner||Fall":["2026-12-03",810,"Thu Dec 3"],
+"Legal Process - Moore||Fall":["2026-12-04",540,"Fri Dec 4"],
+"Commercial Law - Geva||Fall":["2026-12-01",540,"Tue Dec 1"],
+"Legal Ethics - Bethell||Fall":["2026-12-02",540,"Wed Dec 2"],
+"Patents - Mgbeoji||Fall":["2026-12-03",810,"Thu Dec 3"],
+"Municipal Law - Mascarin/Gajaria||Fall":["2026-12-04",540,"Fri Dec 4"],
+"Conflict of Laws - Walker||Fall":["2026-12-01",540,"Tue Dec 1"],
+"Wills and Estates - Michaud||Fall":["2026-12-02",540,"Wed Dec 2"],
+"Public International Law - Saberi||Fall":["2026-12-04",540,"Fri Dec 4"],
+"Criminal Law II: Cybercrime - Fawcett||Fall":["2026-12-01",540,"Tue Dec 1"],
+"Real Estate Transactions - Jung||Fall":["2026-12-04",540,"Fri Dec 4"],
+"Administrative Law - Martin/Killey||Winter":["2027-04-05",540,"Mon Apr 5"],
+"Business Associations - Petrin||Winter":["2027-04-06",540,"Tue Apr 6"],
+"Bankruptcy & Insolvency Law - Kauffman||Winter":["2027-04-07",540,"Wed Apr 7"],
+"Evidence - Jones||Winter":["2027-04-08",810,"Thu Apr 8"],
+"Business Associations - Ellinidis/Akkawi||Winter":["2027-04-09",540,"Fri Apr 9"],
+"Copyright - Bandopadhyay||Winter":["2027-04-05",540,"Mon Apr 5"],
+"Civil Liberties - Zwibel||Winter":["2027-04-06",540,"Tue Apr 6"],
+"Taxation Law - Parachin||Winter":["2027-04-07",540,"Wed Apr 7"],
+"Restitution - McCamus||Winter":["2027-04-08",810,"Thu Apr 8"],
+"Legal Governance of Health Care - Sangiuliano||Winter":["2027-04-09",540,"Fri Apr 9"],
+"Family Law I - Drummond||Winter":["2027-04-05",540,"Mon Apr 5"],
+"Civil Procedure II - Watson||Winter":["2027-04-06",540,"Tue Apr 6"],
+"Trademarks - Mgbeoji||Winter":["2027-04-07",540,"Wed Apr 7"],
+"Real Estate Transactions - Carter||Winter":["2027-04-09",540,"Fri Apr 9"],
+"Jurisprudence - Gaxiola Lappe||Winter":["2027-04-06",540,"Tue Apr 6"]
+};
+
+
+
+let fSem='all', fType='all';
+
+function pill(el){
+  const g=el.dataset.g;
+  document.querySelectorAll(`.fpill[data-g="${g}"]`).forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  if(g==='sem')  fSem=el.dataset.v;
+  if(g==='type') fType=el.dataset.v;
+  rebuildAllDropdowns();
+}
+
+function passesFilter(c){
+  return (fSem==='all'||c.sem===fSem)&&(fType==='all'||c.type===fType);
+}
+
+function rebuildAllDropdowns(){
+  // Strategy: keep ALL options in the DOM at all times so existing selections
+  // are never evicted. Options that don't match the current filter are marked
+  // disabled+hidden so they can't be newly picked, but a slot that already
+  // holds one stays intact (e.g. Fall course stays selected when Winter filter is on).
+  document.querySelectorAll('.course-select').forEach((sel,i)=>{
+    const prev=sel.value;
+    // Update disabled/hidden state on every option
+    Array.from(sel.options).forEach(opt=>{
+      if(!opt.value) return; // always leave the blank option alone
+      const c=MAP[opt.value];
+      const visible=c&&passesFilter(c);
+      opt.disabled=!visible;
+      opt.hidden=!visible;
+    });
+    // If the currently-selected course is hidden by the filter, keep it selected
+    // (the value is still valid — the user just can't pick it fresh).
+    // Nothing to do — the value persists automatically since the option still exists.
+  });
+  updateReqs();
+  updateSelCount();
+}
+
+function buildSlots(){
+  const wrap=document.getElementById('slots');
+  wrap.innerHTML='';
+  // Always include every course — filter toggling uses disabled/hidden, not innerHTML replacement
+  const opts='<option value="">— leave blank —</option>'+DB.map(c=>`<option value="${c.key}">${c.name}${c.prof?' — '+c.prof:''}</option>`).join('');
+  for(let i=0;i<10;i++){
+    const d=document.createElement('div');
+    d.className='slot';
+    d.innerHTML=`<div class="rank">${i+1}</div>
+      <div class="slot-inner">
+        <select class="course-select" data-idx="${i}" onchange="onSelect(this)">${opts}</select>
+        <div class="slot-prof" id="sp${i}"></div>
+        <div class="slot-badges" id="sb${i}"></div>
+      </div>`;
+    wrap.appendChild(d);
+  }
+}
+
+function onSelect(sel){
+  const i=parseInt(sel.dataset.idx);
+  sel.classList.toggle('has-val',!!sel.value);
+  updateSlotMeta(i,sel.value);
+  updateReqs();
+  updateSelCount();
+}
+
+function updateSlotMeta(i,key){
+  const prof=document.getElementById('sp'+i);
+  const bdg=document.getElementById('sb'+i);
+  if(!key||!MAP[key]){
+    prof.className='slot-prof'; prof.textContent='';
+    bdg.className='slot-badges'; bdg.innerHTML='';
+    return;
+  }
+  const c=MAP[key];
+  prof.className='slot-prof on';
+  prof.textContent=c.prof||'';
+  const scls=c.sem==='Fall'?'sb-fall':'sb-winter';
+  const tcls=c.type==='Seminar'?'sb-seminar':'sb-course';
+  let b=`<span class="sb ${scls}">${c.sem}</span><span class="sb ${tcls}">${c.type}</span><span class="sb sb-cr">${c.cred} cr</span>`;
+  if(c.isNew)   b+=`<span class="sb sb-new" title="New prof — no historical demand data">New</span>`;
+  if(c.writing) b+=`<span class="sb sb-writing">Writing ✓</span>`;
+  if(c.prax)    b+=`<span class="sb sb-prax">Practicum ✓</span>`;
+  bdg.className='slot-badges on'; bdg.innerHTML=b;
+}
+
+function updateSelCount(){
+  const n=[...document.querySelectorAll('.course-select')].filter(s=>s.value).length;
+  document.getElementById('sel-tag').textContent=`${n} / 10 selected`;
+}
+
+function updateReqs(){
+  const sel=[...document.querySelectorAll('.course-select')].map(s=>s.value).filter(Boolean).map(k=>MAP[k]).filter(Boolean);
+  const wr=sel.filter(c=>c.writing);
+  const pr=sel.filter(c=>c.prax);
+  const wb=document.getElementById('w-box'), wv=document.getElementById('w-val');
+  const pb=document.getElementById('p-box'), pv=document.getElementById('p-val');
+  if(wr.length){ wb.className='req-box ok'; wv.textContent=wr.map(c=>c.name).join(', '); }
+  else          { wb.className='req-box no'; wv.textContent='Not fulfilled'; }
+  if(pr.length){ pb.className='req-box ok'; pv.textContent=pr.map(c=>c.name).join(', '); }
+  else          { pb.className='req-box no'; pv.textContent='Not fulfilled'; }
+}
+
+// ── Simulation ────────────────────────────────────────────────────────────
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function setStatus(s){document.getElementById('status').textContent=s;}
+
+async function runSim(){
+  const ballot=[...document.querySelectorAll('.course-select')].map(s=>s.value).filter(Boolean);
+  if(!ballot.length){setStatus('Please select at least one course.');return;}
+  if(new Set(ballot).size!==ballot.length){setStatus('Duplicate courses detected — please fix.');return;}
+
+  const btn=document.getElementById('run-btn');
+  btn.disabled=true;
+  btn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg> Simulating…`;
+  setStatus('Running 8,000 iterations…');
+  document.getElementById('prog').style.width='0%';
+  await sleep(20);
+
+  const ITERS=8000, CHUNK=500;
+  const success={};
+  ballot.forEach(k=>success[k]=0);
+  let fallFull=0,winFull=0;
+  const prog=document.getElementById('prog');
+
+  for(let done=0;done<ITERS;done+=CHUNK){
+    const end=Math.min(done+CHUNK,ITERS);
+    for(let i=done;i<end;i++){
+      const caps={};
+      ballot.forEach(k=>caps[k]=MAP[k].cap);
+      let fCr=0,wCr=0,fR=0,wR=0;
+      for(const k of ballot){
+        const c=MAP[k];
+        // New profs have no historical demand (-1): use the course cap as a
+        // neutral demand proxy so they simulate near the cap/demand boundary.
+        const baseDemand=c.demand<0?c.cap:c.demand;
+        const dem=Math.max(1,Math.round(baseDemand+randn()*baseDemand*0.15));
+        if(c.sem==='Fall'){
+          if(fCr+c.cred>17)continue;
+          const p=Math.min(1,(caps[k]/dem)*(1/(1+fR*0.12)));fR++;
+          if(Math.random()<p&&caps[k]>0){success[k]++;caps[k]--;fCr+=c.cred;}
+        } else {
+          if(wCr+c.cred>17)continue;
+          const p=Math.min(1,(caps[k]/dem)*(1/(1+wR*0.12)));wR++;
+          if(Math.random()<p&&caps[k]>0){success[k]++;caps[k]--;wCr+=c.cred;}
+        }
+      }
+      if(fCr>=13&&fCr<=17)fallFull++;
+      if(wCr>=13&&wCr<=17)winFull++;
+    }
+    prog.style.width=Math.round(end/ITERS*100)+'%';
+    await sleep(0);
+  }
+
+  showResults(ballot,success,fallFull,winFull,ITERS);
+  buildTimetable(ballot);
+  buildExams(ballot);
+  btn.disabled=false;
+  btn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run simulation`;
+  prog.style.width='100%';
+  setStatus(`Done — 8,000 iterations complete.`);
+}
+
+function showResults(ballot,success,fallFull,winFull,N){
+  document.getElementById('fall-rate').textContent=(fallFull/N*100).toFixed(1)+'%';
+  document.getElementById('win-rate').textContent=(winFull/N*100).toFixed(1)+'%';
+  let fI=1,wI=1;
+  const rows=ballot.map(k=>{
+    const c=MAP[k],pct=success[k]/N*100;
+    const pos=c.sem==='Fall'?`Fall #${fI++}`:`Win #${wI++}`;
+    const sc=c.sem==='Fall'?'sf':'sw',dc=c.type==='Seminar'?'d-sem':'d-crs';
+    let pill,pc,bc;
+    if(pct>75){pill='Safe';pc='p-safe';bc='#2d7a4f';}
+    else if(pct>40){pill='Moderate';pc='p-mod';bc='#c48f00';}
+    else{pill='High risk';pc='p-risk';bc='#c0392b';}
+    const wt=c.writing?`<span class="sb sb-writing" style="font-size:9px;padding:1px 5px;border-radius:3px">W</span>`:'';
+    const pt=c.prax?`<span class="sb sb-prax" style="font-size:9px;padding:1px 5px;border-radius:3px">P</span>`:'';
+    const nw=c.isNew?`<span class="sb sb-new" style="font-size:9px;padding:1px 5px;border-radius:3px" title="New prof — odds estimated from cap, no demand history">New</span>`:'';
+    return `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap">${pos}</td>
+      <td><span class="sem-badge ${sc}">${c.sem}</span></td>
+      <td><div style="display:flex;align-items:center;gap:5px"><span class="dot ${dc}"></span><div><div class="cname">${c.name}</div>${c.prof?`<div class="cprof">${c.prof}</div>`:''}</div>${wt}${pt}${nw}</div></td>
+      <td style="min-width:130px"><div class="bar-row"><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${bc}"></div></div><span class="bar-pct">${pct.toFixed(1)}%</span></div><span class="pill ${pc}">${pill}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('results-wrap').innerHTML=`<table class="rtable"><thead><tr><th>Queue</th><th>Sem</th><th>Course</th><th>Success odds</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── Timetable ───────────────────────────────────────────────────────────
+const TT_DAYS=['Mon','Tue','Wed','Thu','Fri'];
+const TT_START=8*60, TT_END=22*60;            // grid window 8:00 – 22:00 (latest class ends 10pm)
+const TT_PXMIN=0.78;                            // pixels per minute
+const TT_HEADER=26;                             // day-header row height
+
+function ttFmt(m){
+  let h=Math.floor(m/60), mi=m%60;
+  const ap=h>=12?'p':'a'; let hh=h%12; if(hh===0)hh=12;
+  return mi===0?`${hh}${ap}`:`${hh}:${String(mi).padStart(2,'0')}${ap}`;
+}
+
+// Build per-semester meeting list from the current ballot.
+function ttCollect(ballot){
+  const out={Fall:[],Winter:[]};
+  ballot.forEach(key=>{
+    const c=MAP[key]; if(!c) return;
+    const meets=SCHED[key]||[];
+    const fixed=meets.filter(m=>m[0]>=0);
+    out[c.sem].push({key,name:c.name,prof:c.prof,type:c.type,
+                     meets:fixed, hasFixed:fixed.length>0,
+                     async:meets.find(m=>m[3])?.[3]||''});
+  });
+  return out;
+}
+
+// Detect overlapping meetings within one semester. Returns
+// {clashKeys:Set, pairs:[{a,b,day,s,e}]}.
+function ttConflicts(list){
+  const flat=[];
+  list.forEach(c=>c.meets.forEach(m=>flat.push({key:c.key,name:c.name,day:m[0],s:m[1],e:m[2]})));
+  const clashKeys=new Set(), pairs=[];
+  for(let i=0;i<flat.length;i++)for(let j=i+1;j<flat.length;j++){
+    const A=flat[i],B=flat[j];
+    if(A.key===B.key||A.day!==B.day) continue;
+    const s=Math.max(A.s,B.s), e=Math.min(A.e,B.e);
+    if(s<e){
+      clashKeys.add(A.key); clashKeys.add(B.key);
+      pairs.push({a:A.name,b:B.name,day:A.day,s,e});
+    }
+  }
+  // de-dup pairs (same two courses can clash on multiple days — keep each day)
+  const seen=new Set(), uniq=[];
+  pairs.forEach(p=>{
+    const k=[p.a,p.b].sort().join('§')+'§'+p.day;
+    if(!seen.has(k)){seen.add(k);uniq.push(p);}
+  });
+  return {clashKeys,pairs:uniq};
+}
+
+function ttRenderGrid(containerId,list,clashKeys,semClass){
+  const wrap=document.getElementById(containerId);
+  const withFixed=list.filter(c=>c.hasFixed);
+  if(!withFixed.length){
+    wrap.innerHTML=`<div class="tt-empty">No scheduled courses this term.</div>`;
+    return;
+  }
+  const bodyH=(TT_END-TT_START)*TT_PXMIN;
+  let h=`<div class="tt-grid" style="grid-template-rows:${TT_HEADER}px ${bodyH}px">`;
+  h+=`<div class="tt-corner"></div>`;
+  TT_DAYS.forEach(d=>h+=`<div class="tt-dayhdr">${d}</div>`);
+  // time column
+  h+=`<div class="tt-timecol">`;
+  for(let t=TT_START;t<=TT_END;t+=60){
+    const y=(t-TT_START)*TT_PXMIN;
+    h+=`<div class="tt-timelbl" style="top:${y}px">${ttFmt(t)}</div>`;
+  }
+  h+=`</div>`;
+  // day columns with hour gridlines + blocks
+  for(let d=0;d<5;d++){
+    h+=`<div class="tt-daycol">`;
+    for(let t=TT_START+60;t<TT_END;t+=60){
+      const y=(t-TT_START)*TT_PXMIN;
+      h+=`<div class="tt-hourline" style="top:${y}px"></div>`;
+    }
+    // collect this day's blocks, compute side-by-side columns for overlaps
+    const blocks=[];
+    withFixed.forEach(c=>c.meets.forEach(m=>{if(m[0]===d)blocks.push({c,s:m[1],e:m[2],async:m[3]});}));
+    blocks.sort((a,b)=>a.s-b.s||a.e-b.e);
+    // greedy column assignment
+    const colsEnd=[];
+    blocks.forEach(b=>{
+      let col=0; while(col<colsEnd.length&&colsEnd[col]>b.s)col++;
+      colsEnd[col]=b.e; b._col=col;
+    });
+    const ncol=Math.max(1,colsEnd.length);
+    blocks.forEach(b=>{
+      const top=(b.s-TT_START)*TT_PXMIN;
+      const hgt=Math.max(14,(b.e-b.s)*TT_PXMIN-2);
+      const w=100/ncol, left=b._col*w;
+      const cls=clashKeys.has(b.c.key)?'clash':semClass;
+      const asyncTag=b.async?`<div class="tt-block-async">+${b.async} async</div>`:'';
+      const profLine=b.c.prof?`<div class="tt-block-prof">${b.c.prof}</div>`:'';
+      h+=`<div class="tt-block ${cls}" title="${b.c.name}${b.c.prof?' — '+b.c.prof:''}\n${ttFmt(b.s)}–${ttFmt(b.e)}"
+            style="top:${top}px;height:${hgt}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px)">
+            <div class="tt-block-name">${b.c.name}</div>${profLine}
+            <div class="tt-block-time">${ttFmt(b.s)}–${ttFmt(b.e)}</div>${asyncTag}
+          </div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  wrap.innerHTML=h;
+}
+
+function ttRenderAsync(listId,list){
+  const el=document.getElementById(listId);
+  const noFixed=list.filter(c=>!c.hasFixed);
+  if(!noFixed.length){el.innerHTML='';return;}
+  el.innerHTML=noFixed.map(c=>
+    `<div class="tt-async-item"><span class="tt-async-tag">No fixed time</span><span>${c.name}${c.prof?' · '+c.prof:''}</span></div>`
+  ).join('');
+}
+
+function ttRenderBanner(fc,wc){
+  const el=document.getElementById('tt-conflict-banner');
+  const all=[...fc.pairs.map(p=>({...p,sem:'Fall'})),...wc.pairs.map(p=>({...p,sem:'Winter'}))];
+  if(!all.length){
+    el.innerHTML=`<div class="tt-banner clean"><div class="tt-banner-h">✓ No conflicts</div>Every selected course fits without overlap.</div>`;
+    return;
+  }
+  const rows=all.map(p=>{
+    const semTag=p.sem==='Fall'?'Fall':'Winter';
+    return `<div class="tt-clash-row"><span class="tt-clash-day">${semTag} · ${TT_DAYS[p.day]} ${ttFmt(p.s)}–${ttFmt(p.e)}</span><br>${p.a} <strong>×</strong> ${p.b}</div>`;
+  }).join('');
+  const n=all.length;
+  el.innerHTML=`<div class="tt-banner clash"><div class="tt-banner-h">⚠ ${n} conflict${n>1?'s':''} detected</div>${rows}</div>`;
+}
+
+function buildTimetable(ballot){
+  const sec=document.getElementById('tt-section');
+  const bySem=ttCollect(ballot);
+  const fc=ttConflicts(bySem.Fall), wc=ttConflicts(bySem.Winter);
+  ttRenderBanner(fc,wc);
+  ttRenderGrid('tt-fall',bySem.Fall,fc.clashKeys,'fall');
+  ttRenderGrid('tt-win', bySem.Winter,wc.clashKeys,'winter');
+  ttRenderAsync('tt-fall-async',bySem.Fall);
+  ttRenderAsync('tt-win-async', bySem.Winter);
+  document.getElementById('tt-fall-count').textContent=bySem.Fall.length?`· ${bySem.Fall.length} course${bySem.Fall.length>1?'s':''}`:'';
+  document.getElementById('tt-win-count').textContent=bySem.Winter.length?`· ${bySem.Winter.length} course${bySem.Winter.length>1?'s':''}`:'';
+  sec.hidden=false;
+}
+
+// ── Exam conflicts ──────────────────────────────────────────────────────
+const EXAM_LEN=180;   // assume every exam is a 3-hour interval
+
+function examFmt(m){
+  let h=Math.floor(m/60), mi=m%60; const ap=h>=12?'p':'a'; let hh=h%12; if(hh===0)hh=12;
+  return mi===0?`${hh}${ap}`:`${hh}:${String(mi).padStart(2,'0')}${ap}`;
+}
+
+function buildExams(ballot){
+  const sec=document.getElementById('exam-section');
+  // Collect exams for the selected courses (skip those with no exam row = take-home/paper)
+  const sat=[];
+  ballot.forEach(key=>{
+    const e=EXAMS[key]; if(!e) return;
+    const c=MAP[key];
+    sat.push({key,name:c?c.name:key.split('||')[0],prof:c?c.prof:'',
+              sem:c?c.sem:'', date:e[0], start:e[1], label:e[2]});
+  });
+
+  // Pairwise conflict detection on 3-hour windows.
+  const clashKeys=new Set(), warnKeys=new Set(), pairs=[];
+  for(let i=0;i<sat.length;i++)for(let j=i+1;j<sat.length;j++){
+    const A=sat[i],B=sat[j];
+    if(A.date!==B.date) continue;
+    const overlap=Math.max(A.start,B.start) < Math.min(A.start+EXAM_LEN,B.start+EXAM_LEN);
+    if(overlap){ clashKeys.add(A.key);clashKeys.add(B.key);
+      pairs.push({kind:'clash',a:A,b:B}); }
+    else { if(!clashKeys.has(A.key))warnKeys.add(A.key); if(!clashKeys.has(B.key))warnKeys.add(B.key);
+      pairs.push({kind:'warn',a:A,b:B}); }
+  }
+  // A key flagged red shouldn't also count as yellow.
+  warnKeys.forEach(k=>{ if(clashKeys.has(k)) warnKeys.delete(k); });
+
+  examRenderBanner(pairs, sat.length);
+  examRenderList(sat, clashKeys, warnKeys);
+  sec.hidden=false;
+}
+
+function examRenderBanner(pairs, total){
+  const el=document.getElementById('exam-banner');
+  const clashes=pairs.filter(p=>p.kind==='clash');
+  const warns=pairs.filter(p=>p.kind==='warn');
+  if(!total){
+    el.innerHTML=`<div class="exam-banner clean"><div class="exam-banner-h">No scheduled exams</div>None of your selected courses have a sit-down exam on the registrar schedule. Any others are take-home or paper-based.</div>`;
+    return;
+  }
+  if(!clashes.length && !warns.length){
+    el.innerHTML=`<div class="exam-banner clean"><div class="exam-banner-h">✓ No exam conflicts</div>Your ${total} scheduled exam${total>1?'s are':' is'} spread across different days.</div>`;
+    return;
+  }
+  let cls = clashes.length ? 'clash' : 'warn';
+  let rows='';
+  clashes.forEach(p=>{
+    rows+=`<div class="exam-clash-row"><strong>${p.a.name}</strong> × <strong>${p.b.name}</strong><br><span class="exam-clash-meta">${p.a.label}, both ${examFmt(p.a.start)}–${examFmt(p.a.start+EXAM_LEN)} · windows overlap</span></div>`;
+  });
+  warns.forEach(p=>{
+    rows+=`<div class="exam-clash-row warn-row">${p.a.name} · ${p.b.name}<br><span class="exam-clash-meta">${p.a.label} · same day, ${examFmt(p.a.start)} and ${examFmt(p.b.start)} (no time overlap)</span></div>`;
+  });
+  const nc=clashes.length, nw=warns.length;
+  let head = nc ? `⚠ ${nc} exam overlap${nc>1?'s':''}` : '';
+  if(nw) head += (nc?' · ':'⚠ ') + `${nw} same-day pair${nw>1?'s':''}`;
+  el.innerHTML=`<div class="exam-banner ${cls}"><div class="exam-banner-h">${head}</div>${rows}</div>`;
+}
+
+function examRenderList(sat, clashKeys, warnKeys){
+  const el=document.getElementById('exam-list');
+  if(!sat.length){ el.innerHTML=`<div class="exam-empty">No sit-down exams among your picks.</div>`; return; }
+  // group by date
+  const byDate={};
+  sat.forEach(e=>{ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+  const dates=Object.keys(byDate).sort();
+  let h='';
+  dates.forEach(d=>{
+    const items=byDate[d].sort((a,b)=>a.start-b.start);
+    const anyClash=items.some(e=>clashKeys.has(e.key));
+    const anyWarn=!anyClash && items.some(e=>warnKeys.has(e.key));
+    const dayCls=anyClash?'has-clash':anyWarn?'has-warn':'';
+    const tag=anyClash?`<span class="exam-day-tag clash">overlap</span>`:anyWarn?`<span class="exam-day-tag warn">same day</span>`:'';
+    const sem=items[0].sem;
+    const courses=items.map(e=>
+      `<div class="exam-course">${e.name}<span class="ec-prof">${e.prof?' · '+e.prof:''}</span> <span class="exam-clash-meta">(${examFmt(e.start)})</span></div>`
+    ).join('');
+    h+=`<div class="exam-day ${dayCls}">
+          <div class="exam-day-date">${items[0].label}<small>${sem}</small></div>
+          <div class="exam-day-courses">${courses}</div>${tag}
+        </div>`;
+  });
+  el.innerHTML=h;
+}
+
+buildSlots();
+</script>
+</body>
+</html>
